@@ -61,6 +61,10 @@
   text-align: left;
 }
 
+.search-field {
+  position: relative;
+}
+
 .search-input {
   width: 100%;
   box-sizing: border-box;
@@ -75,6 +79,58 @@
 .search-input:focus {
   outline: 2px solid var(--accent-border);
   outline-offset: 2px;
+}
+
+.suggestions {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.suggestion-status {
+  padding: 0.75rem 0.85rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.suggestion-option {
+  width: 100%;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion-option:hover,
+.suggestion-option:focus-visible {
+  outline: none;
+  background: var(--accent-bg);
+}
+
+.suggestion-title {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.suggestion-meta {
+  font-size: 0.9rem;
+  color: var(--text);
 }
 
 .search-button {
@@ -124,10 +180,31 @@
   font-size: 1.35rem;
 }
 
-.result-meta {
-  margin: 0.35rem 0 0;
+.result-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.9rem 0 0;
+}
+
+.result-detail {
+  margin: 0;
+}
+
+.result-detail dt {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text);
-  font-size: 0.95rem;
+}
+
+.result-detail dd {
+  margin: 0.2rem 0 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--text-h);
 }
 
 .location-list {
