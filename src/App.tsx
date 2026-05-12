@@ -14,7 +14,12 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [suggestionError, setSuggestionError] = useState(false)
   const listboxId = useId()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const blurTimeoutRef = useRef<number | null>(null)
+
+  function dismissKeyboard() {
+    searchInputRef.current?.blur()
+  }
 
   useEffect(() => {
     const trimmed = query.trim()
@@ -80,6 +85,7 @@ function App() {
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setShowSuggestions(false)
+    dismissKeyboard()
     await runSearch(query)
   }
 
@@ -92,6 +98,7 @@ function App() {
     setQuery(nextQuery)
     setShowSuggestions(false)
     setSuggestions([])
+    dismissKeyboard()
     await runSearch(String(flower.id))
   }
 
@@ -117,7 +124,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <p className="eyebrow">Flower shop</p>
+        <p className="eyebrow">Farwest Iris Gardens</p>
         <h1>Iris Locator</h1>
         <p className="lede">Search by product ID, SKU, or flower name.</p>
       </header>
@@ -130,6 +137,7 @@ function App() {
 
           <div className="search-field">
             <input
+              ref={searchInputRef}
               id="flower-search"
               className="search-input"
               type="search"
