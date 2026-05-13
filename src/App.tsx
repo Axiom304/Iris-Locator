@@ -239,6 +239,24 @@ function ResultCard({ flower }: { flower: Flower }) {
           <dt>SKU</dt>
           <dd>{flower.sku}</dd>
         </div>
+        {flower.hybridizer ? (
+          <div className="result-detail">
+            <dt>Hybridizer</dt>
+            <dd>{flower.hybridizer}</dd>
+          </div>
+        ) : null}
+        {flower.released ? (
+          <div className="result-detail">
+            <dt>Released</dt>
+            <dd>{flower.released}</dd>
+          </div>
+        ) : null}
+        {flower.colors ? (
+          <div className="result-detail">
+            <dt>Colors</dt>
+            <dd>{flower.colors}</dd>
+          </div>
+        ) : null}
       </dl>
 
       <div className="location-list" aria-label="Locations">
