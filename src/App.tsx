@@ -10,6 +10,14 @@ import type { FlowerSearchFields, FlowerSortState } from './types/searchFilters'
 import { parseLocations, type Flower } from './types/flower'
 import './App.css'
 
+function flowerSearchFieldsEqual(a: FlowerSearchFields, b: FlowerSearchFields): boolean {
+  return flowerSearchFieldLabels.every(({ key }) => a[key] === b[key])
+}
+
+function flowerSortEqual(a: FlowerSortState, b: FlowerSortState): boolean {
+  return a.column === b.column && a.ascending === b.ascending
+}
+
 function App() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Flower[]>([])
@@ -24,6 +32,12 @@ function App() {
     ...unrestrictedSearchFields,
   }))
   const [sortState, setSortState] = useState<FlowerSortState>(() => ({ ...defaultFlowerSort }))
+  const [appliedSearchFields, setAppliedSearchFields] = useState<FlowerSearchFields>(() => ({
+    ...unrestrictedSearchFields,
+  }))
+  const [appliedSortState, setAppliedSortState] = useState<FlowerSortState>(() => ({
+    ...defaultFlowerSort,
+  }))
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const filtersPanelId = useId()
   const listboxId = useId()
@@ -81,20 +95,23 @@ function App() {
 
   async function runSearch(searchQuery: string, fieldsOverride?: FlowerSearchFields) {
     const trimmed = normalizeSearchQuery(searchQuery)
+    const fields = fieldsOverride ?? searchFields
+    const sortForRequest: FlowerSortState = { ...sortState }
+
     if (!trimmed) {
       setResults([])
       setHasSearched(false)
       setErrorMessage(null)
+      setAppliedSearchFields({ ...searchFields })
+      setAppliedSortState({ ...sortState })
       return
     }
-
-    const fields = fieldsOverride ?? searchFields
 
     setIsSearching(true)
     setErrorMessage(null)
 
     try {
-      const matches = await searchFlowers(trimmed, fields, sortState)
+      const matches = await searchFlowers(trimmed, fields, sortForRequest)
       setResults(matches)
       setHasSearched(true)
     } catch {
@@ -103,6 +120,8 @@ function App() {
       setErrorMessage('Could not load locations. Try again.')
     } finally {
       setIsSearching(false)
+      setAppliedSearchFields({ ...fields })
+      setAppliedSortState(sortForRequest)
     }
   }
 
@@ -158,6 +177,22 @@ function App() {
   )
 
   const showPanelBadge = !filtersAreDefault || !sortIsDefault
+
+  const searchSettingsStale = useMemo(
+    () =>
+      !flowerSearchFieldsEqual(searchFields, appliedSearchFields) ||
+      !flowerSortEqual(sortState, appliedSortState),
+    [searchFields, appliedSearchFields, sortState, appliedSortState],
+  )
+
+  const showUpdateSearchButton =
+    searchSettingsStale && normalizeSearchQuery(query).trim().length > 0
+
+  async function handleUpdateSearchFromPanel() {
+    setShowSuggestions(false)
+    dismissKeyboard()
+    await runSearch(query)
+  }
 
   function setField(key: keyof FlowerSearchFields, checked: boolean) {
     setSearchFields((prev) => ({ ...prev, [key]: checked }))
@@ -278,6 +313,23 @@ function App() {
                   Reset sort (title A–Z)
                 </button>
               </div>
+
+              {showUpdateSearchButton ? (
+                <div className="update-search-block">
+                  <p className="update-search-hint">
+                    Filters or sort changed since your last location search. Run the search again to
+                    refresh results.
+                  </p>
+                  <button
+                    type="button"
+                    className="update-search-button"
+                    disabled={isSearching}
+                    onClick={() => void handleUpdateSearchFromPanel()}
+                  >
+                    {isSearching ? 'Searching…' : 'Update Search'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
