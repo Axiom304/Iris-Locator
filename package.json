@@ -13,6 +13,7 @@
     "db:pull": "supabase db pull",
     "db:reset": "supabase db reset",
     "import:flowers": "node scripts/import-flowers.mjs",
+    "push:flowers": "node scripts/push-flowers-remote.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
