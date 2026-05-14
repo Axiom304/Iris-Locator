@@ -44,6 +44,210 @@
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+.filters-block {
+  margin-bottom: 0.85rem;
+}
+
+.filters-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg) 88%, white);
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-h);
+  cursor: pointer;
+  text-align: left;
+}
+
+.filters-toggle:hover,
+.filters-toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.filters-toggle-label {
+  flex: 1;
+}
+
+.filters-toggle-hint {
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.filters-active-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  background: var(--accent-bg);
+}
+
+.filters-panel {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.filters-help {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.filters-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.filter-item {
+  margin: 0;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-h);
+}
+
+.filter-check {
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.filter-check:checked {
+  border-color: #aa3bff;
+  background:
+    radial-gradient(circle, #aa3bff 0.28rem, transparent 0.29rem),
+    var(--bg);
+  box-shadow: inset 0 0 0 2px var(--bg);
+}
+
+.filter-check:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.filter-option-text {
+  user-select: none;
+}
+
+.filters-clear {
+  margin-top: 0.85rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-h);
+  background: color-mix(in srgb, var(--bg) 92%, white);
+  cursor: pointer;
+}
+
+.filters-clear:hover,
+.filters-clear:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.sort-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.sort-section-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.sort-section-help {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.sort-fieldset {
+  margin: 0 0 0.85rem;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.sort-legend {
+  padding: 0;
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.sort-direction-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sort-by-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 0.75rem;
+}
+
+.sort-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: var(--text-h);
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.sort-radio {
+  margin: 0.15rem 0 0;
+  flex-shrink: 0;
+  accent-color: #aa3bff;
+}
+
+.sort-reset {
+  margin-top: 0.25rem;
+}
+
 .search-form {
   display: grid;
   gap: 0.75rem;
@@ -162,8 +366,17 @@
   list-style: none;
   margin: 1rem 0 0;
   padding: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.85rem;
+}
+
+.results-count {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
 }
 
 .result-card {
@@ -207,11 +420,24 @@
   color: var(--text-h);
 }
 
+.location-section {
+  margin-top: 1rem;
+}
+
+.location-heading {
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
 .location-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin: 0;
 }
 
 .location-chip {

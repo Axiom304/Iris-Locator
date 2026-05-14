@@ -1,5 +1,12 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { searchFlowers, suggestFlowers } from './lib/searchFlowers'
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  defaultFlowerSort,
+  flowerSearchFieldLabels,
+  searchFlowers,
+  suggestFlowers,
+  unrestrictedSearchFields,
+} from './lib/searchFlowers'
+import type { FlowerSearchFields, FlowerSortState } from './types/searchFilters'
 import { parseLocations, type Flower } from './types/flower'
 import './App.css'
 
@@ -13,6 +20,12 @@ function App() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [suggestionError, setSuggestionError] = useState(false)
+  const [searchFields, setSearchFields] = useState<FlowerSearchFields>(() => ({
+    ...unrestrictedSearchFields,
+  }))
+  const [sortState, setSortState] = useState<FlowerSortState>(() => ({ ...defaultFlowerSort }))
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const filtersPanelId = useId()
   const listboxId = useId()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const blurTimeoutRef = useRef<number | null>(null)
@@ -25,18 +38,22 @@ function App() {
     const trimmed = query.trim()
 
     if (!trimmed) {
-      setSuggestions([])
-      setIsSuggesting(false)
-      setSuggestionError(false)
-      return
+      const clearId = window.setTimeout(() => {
+        setSuggestions([])
+        setIsSuggesting(false)
+        setSuggestionError(false)
+      }, 0)
+      return () => window.clearTimeout(clearId)
     }
 
-    setIsSuggesting(true)
-    setSuggestionError(false)
+    const kickoffId = window.setTimeout(() => {
+      setIsSuggesting(true)
+      setSuggestionError(false)
+    }, 0)
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        const matches = await suggestFlowers(trimmed)
+        const matches = await suggestFlowers(trimmed, 8, searchFields, sortState)
         setSuggestions(matches)
       } catch {
         setSuggestions([])
@@ -47,17 +64,22 @@ function App() {
     }, 200)
 
     return () => {
+      window.clearTimeout(kickoffId)
       window.clearTimeout(timeoutId)
     }
-  }, [query])
+  }, [query, searchFields, sortState])
 
+  /** Only collapse to bare ID when the query matches the suggestion format (`123 · Title`). */
   function normalizeSearchQuery(searchQuery: string): string {
     const trimmed = searchQuery.trim()
-    const idPrefix = trimmed.match(/^(\d+)/)
-    return idPrefix?.[1] ?? trimmed
+    const fromSuggestion = trimmed.match(/^(\d+)\s*·/)
+    if (fromSuggestion) {
+      return fromSuggestion[1]
+    }
+    return trimmed
   }
 
-  async function runSearch(searchQuery: string) {
+  async function runSearch(searchQuery: string, fieldsOverride?: FlowerSearchFields) {
     const trimmed = normalizeSearchQuery(searchQuery)
     if (!trimmed) {
       setResults([])
@@ -66,11 +88,13 @@ function App() {
       return
     }
 
+    const fields = fieldsOverride ?? searchFields
+
     setIsSearching(true)
     setErrorMessage(null)
 
     try {
-      const matches = await searchFlowers(trimmed)
+      const matches = await searchFlowers(trimmed, fields, sortState)
       setResults(matches)
       setHasSearched(true)
     } catch {
@@ -99,7 +123,7 @@ function App() {
     setShowSuggestions(false)
     setSuggestions([])
     dismissKeyboard()
-    await runSearch(String(flower.id))
+    await runSearch(String(flower.id), unrestrictedSearchFields)
   }
 
   function handleInputFocus() {
@@ -121,18 +145,146 @@ function App() {
   const trimmedQuery = query.trim()
   const shouldShowSuggestions = showSuggestions && trimmedQuery.length > 0
 
+  const filtersAreDefault = useMemo(
+    () => !Object.values(searchFields).some(Boolean),
+    [searchFields],
+  )
+
+  const sortIsDefault = useMemo(
+    () =>
+      sortState.column === defaultFlowerSort.column &&
+      sortState.ascending === defaultFlowerSort.ascending,
+    [sortState],
+  )
+
+  const showPanelBadge = !filtersAreDefault || !sortIsDefault
+
+  function setField(key: keyof FlowerSearchFields, checked: boolean) {
+    setSearchFields((prev) => ({ ...prev, [key]: checked }))
+  }
+
+  function clearSearchFilters() {
+    setSearchFields({ ...unrestrictedSearchFields })
+  }
+
+  function resetSort() {
+    setSortState({ ...defaultFlowerSort })
+  }
+
   return (
     <div className="app">
       <header className="app-header">
         <p className="eyebrow">Farwest Iris Gardens</p>
         <h1>Iris Locator</h1>
-        <p className="lede">Search by product ID, SKU, or flower name.</p>
+        <p className="lede">
+          Search by ID, SKU, title, hybridizer, release year, or colors.
+        </p>
       </header>
 
       <main className="app-main">
+        <div className="filters-block">
+          <button
+            type="button"
+            className="filters-toggle"
+            aria-expanded={filtersExpanded}
+            aria-controls={filtersPanelId}
+            onClick={() => setFiltersExpanded((v) => !v)}
+          >
+            <span className="filters-toggle-label">Filters / Sort</span>
+            <span className="filters-toggle-hint" aria-hidden="true">
+              {filtersExpanded ? '▼' : '▶'}
+            </span>
+            {showPanelBadge ? (
+              <span className="filters-active-badge">Adjusted</span>
+            ) : null}
+          </button>
+
+          {filtersExpanded ? (
+            <div className="filters-panel" id={filtersPanelId}>
+              <p className="filters-help">
+                Leave all unchecked to search every field (default). Check one or more to limit the
+                search to only those fields—for example, check Release only to search by year.
+              </p>
+              <ul className="filters-list">
+                {flowerSearchFieldLabels.map(({ key, label }) => (
+                  <li key={key} className="filter-item">
+                    <label className="filter-option">
+                      <input
+                        type="checkbox"
+                        className="filter-check"
+                        checked={searchFields[key]}
+                        onChange={(e) => setField(key, e.target.checked)}
+                      />
+                      <span className="filter-option-text">{label}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="filters-clear" onClick={clearSearchFilters}>
+                Clear filters (search all fields)
+              </button>
+
+              <div className="sort-section">
+                <h3 className="sort-section-title">Sort</h3>
+                <p className="sort-section-help">
+                  Pick ascending (A–Z, low to high) or reverse order, then which field to sort by.
+                </p>
+
+                <fieldset className="sort-fieldset">
+                  <legend className="sort-legend">Order</legend>
+                  <div className="sort-direction-row">
+                    <label className="sort-radio-label">
+                      <input
+                        type="radio"
+                        className="sort-radio"
+                        name="flower-sort-direction"
+                        checked={sortState.ascending}
+                        onChange={() => setSortState((s) => ({ ...s, ascending: true }))}
+                      />
+                      <span>Ascending (A–Z, low to high)</span>
+                    </label>
+                    <label className="sort-radio-label">
+                      <input
+                        type="radio"
+                        className="sort-radio"
+                        name="flower-sort-direction"
+                        checked={!sortState.ascending}
+                        onChange={() => setSortState((s) => ({ ...s, ascending: false }))}
+                      />
+                      <span>Reverse (Z–A, high to low)</span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="sort-fieldset">
+                  <legend className="sort-legend">Sort by</legend>
+                  <div className="sort-by-grid">
+                    {flowerSearchFieldLabels.map(({ key, label }) => (
+                      <label key={key} className="sort-radio-label">
+                        <input
+                          type="radio"
+                          className="sort-radio"
+                          name="flower-sort-column"
+                          checked={sortState.column === key}
+                          onChange={() => setSortState((s) => ({ ...s, column: key }))}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <button type="button" className="filters-clear sort-reset" onClick={resetSort}>
+                  Reset sort (title A–Z)
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         <form className="search-form" onSubmit={handleSearch}>
           <label className="search-label" htmlFor="flower-search">
-            ID, SKU, or title
+            ID, SKU, title, hybridizer, release, or colors
           </label>
 
           <div className="search-field">
@@ -145,7 +297,7 @@ function App() {
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              placeholder="1000, 1000-TB, or Decibelle"
+              placeholder="Schreiner, 2015, Pink, or 1000-TB"
               value={query}
               role="combobox"
               aria-autocomplete="list"
@@ -206,7 +358,13 @@ function App() {
         {errorMessage ? <p className="status status-error">{errorMessage}</p> : null}
 
         {hasSearched && !errorMessage && results.length === 0 ? (
-          <p className="status">No matches for that ID, SKU, or title.</p>
+          <p className="status">No matches for that search.</p>
+        ) : null}
+
+        {hasSearched && !errorMessage && results.length > 1 ? (
+          <p className="results-count" role="status">
+            {results.length} matches
+          </p>
         ) : null}
 
         <ul className="results">
@@ -259,13 +417,18 @@ function ResultCard({ flower }: { flower: Flower }) {
         ) : null}
       </dl>
 
-      <div className="location-list" aria-label="Locations">
-        {locations.map((location) => (
-          <span key={location} className="location-chip">
-            {location}
-          </span>
-        ))}
-      </div>
+      <section className="location-section" aria-labelledby={`location-${flower.id}`}>
+        <h3 className="location-heading" id={`location-${flower.id}`}>
+          Location
+        </h3>
+        <div className="location-list">
+          {locations.map((location) => (
+            <span key={location} className="location-chip">
+              {location}
+            </span>
+          ))}
+        </div>
+      </section>
     </>
   )
 }

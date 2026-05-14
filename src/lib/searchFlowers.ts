@@ -1,39 +1,75 @@
 import { supabase } from './supabase'
 import type { Flower } from '../types/flower'
+import {
+  defaultFlowerSearchFields,
+  defaultFlowerSort,
+  type FlowerSearchFields,
+  type FlowerSortState,
+  unrestrictedSearchFields,
+} from '../types/searchFilters'
+
+export type { FlowerSearchFields, FlowerSortColumn, FlowerSortState } from '../types/searchFilters'
+export {
+  defaultFlowerSearchFields,
+  defaultFlowerSort,
+  flowerSearchFieldLabels,
+  unrestrictedSearchFields,
+} from '../types/searchFilters'
 
 function escapeIlike(value: string): string {
   return value.replace(/[%_\\]/g, '\\$&')
 }
 
-function buildSearchFilter(query: string): string {
+function effectiveFields(fields: FlowerSearchFields): FlowerSearchFields {
+  if (!Object.values(fields).some(Boolean)) {
+    return { ...defaultFlowerSearchFields }
+  }
+  return fields
+}
+
+export function buildSearchFilter(query: string, fields: FlowerSearchFields): string {
+  const f = effectiveFields(fields)
   const escaped = escapeIlike(query)
   const pattern = `%${escaped}%`
-  const filters = [
-    `title.ilike.${pattern}`,
-    `sku.ilike.${pattern}`,
-    `hybridizer.ilike.${pattern}`,
-    `colors.ilike.${pattern}`,
-  ]
+  const filters: string[] = []
 
-  if (/^\d+$/.test(query)) {
+  if (f.title) filters.push(`title.ilike.${pattern}`)
+  if (f.sku) filters.push(`sku.ilike.${pattern}`)
+  if (f.hybridizer) filters.push(`hybridizer.ilike.${pattern}`)
+  if (f.released) filters.push(`released.ilike.${pattern}`)
+  if (f.colors) filters.push(`colors.ilike.${pattern}`)
+
+  if (/^\d+$/.test(query) && f.id) {
     filters.push(`id.eq.${Number(query)}`)
-    filters.push(`sku.ilike.${escaped}%`)
   }
 
   return filters.join(',')
 }
 
-export async function searchFlowers(query: string): Promise<Flower[]> {
+function tiebreakColumn(primary: FlowerSortState['column']): FlowerSortState['column'] {
+  return primary === 'id' ? 'title' : 'id'
+}
+
+export async function searchFlowers(
+  query: string,
+  fields: FlowerSearchFields = unrestrictedSearchFields,
+  sort: FlowerSortState = defaultFlowerSort,
+): Promise<Flower[]> {
   const trimmed = query.trim()
   if (!trimmed) {
     return []
   }
 
+  const filter = buildSearchFilter(trimmed, fields)
+  const secondary = tiebreakColumn(sort.column)
+
   const { data, error } = await supabase
     .from('flowers')
     .select('id, sku, title, locations, hybridizer, released, colors')
-    .or(buildSearchFilter(trimmed))
-    .order('title')
+    .or(filter)
+    .order(sort.column, { ascending: sort.ascending })
+    .order(secondary, { ascending: true })
+    .limit(2000)
 
   if (error) {
     throw error
@@ -42,17 +78,26 @@ export async function searchFlowers(query: string): Promise<Flower[]> {
   return data ?? []
 }
 
-export async function suggestFlowers(query: string, limit = 8): Promise<Flower[]> {
+export async function suggestFlowers(
+  query: string,
+  limit = 8,
+  fields: FlowerSearchFields = unrestrictedSearchFields,
+  sort: FlowerSortState = defaultFlowerSort,
+): Promise<Flower[]> {
   const trimmed = query.trim()
   if (!trimmed) {
     return []
   }
 
+  const filter = buildSearchFilter(trimmed, fields)
+  const secondary = tiebreakColumn(sort.column)
+
   const { data, error } = await supabase
     .from('flowers')
     .select('id, sku, title, locations, hybridizer, released, colors')
-    .or(buildSearchFilter(trimmed))
-    .order('title')
+    .or(filter)
+    .order(sort.column, { ascending: sort.ascending })
+    .order(secondary, { ascending: true })
     .limit(limit)
 
   if (error) {
