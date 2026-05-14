@@ -30,14 +30,16 @@ function effectiveFields(fields: FlowerSearchFields): FlowerSearchFields {
 export function buildSearchFilter(query: string, fields: FlowerSearchFields): string {
   const f = effectiveFields(fields)
   const escaped = escapeIlike(query)
-  const pattern = `%${escaped}%`
+  const containsPattern = `%${escaped}%`
+  const titlePrefixPattern = `${escaped}%`
   const filters: string[] = []
 
-  if (f.title) filters.push(`title.ilike.${pattern}`)
-  if (f.sku) filters.push(`sku.ilike.${pattern}`)
-  if (f.hybridizer) filters.push(`hybridizer.ilike.${pattern}`)
-  if (f.released) filters.push(`released.ilike.${pattern}`)
-  if (f.colors) filters.push(`colors.ilike.${pattern}`)
+  // Title: prefix match only (case-insensitive). Other text fields: substring anywhere.
+  if (f.title) filters.push(`title.ilike.${titlePrefixPattern}`)
+  if (f.sku) filters.push(`sku.ilike.${containsPattern}`)
+  if (f.hybridizer) filters.push(`hybridizer.ilike.${containsPattern}`)
+  if (f.released) filters.push(`released.ilike.${containsPattern}`)
+  if (f.colors) filters.push(`colors.ilike.${containsPattern}`)
 
   if (/^\d+$/.test(query) && f.id) {
     filters.push(`id.eq.${Number(query)}`)

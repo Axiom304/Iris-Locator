@@ -43,6 +43,8 @@ function App() {
   const listboxId = useId()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const blurTimeoutRef = useRef<number | null>(null)
+  /** Bumped on clear (and at start of each search) so stale in-flight requests do not repopulate UI. */
+  const searchEpochRef = useRef(0)
 
   function dismissKeyboard() {
     searchInputRef.current?.blur()
@@ -107,22 +109,51 @@ function App() {
       return
     }
 
+    const epoch = ++searchEpochRef.current
     setIsSearching(true)
     setErrorMessage(null)
 
     try {
       const matches = await searchFlowers(trimmed, fields, sortForRequest)
+      if (searchEpochRef.current !== epoch) {
+        return
+      }
       setResults(matches)
       setHasSearched(true)
     } catch {
+      if (searchEpochRef.current !== epoch) {
+        return
+      }
       setResults([])
       setHasSearched(true)
       setErrorMessage('Could not load locations. Try again.')
     } finally {
-      setIsSearching(false)
-      setAppliedSearchFields({ ...fields })
-      setAppliedSortState(sortForRequest)
+      if (searchEpochRef.current === epoch) {
+        setIsSearching(false)
+        setAppliedSearchFields({ ...fields })
+        setAppliedSortState(sortForRequest)
+      }
     }
+  }
+
+  function handleClearSearch() {
+    searchEpochRef.current += 1
+    if (blurTimeoutRef.current !== null) {
+      window.clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+    setQuery('')
+    setResults([])
+    setHasSearched(false)
+    setErrorMessage(null)
+    setShowSuggestions(false)
+    setSuggestions([])
+    setIsSuggesting(false)
+    setSuggestionError(false)
+    setIsSearching(false)
+    setAppliedSearchFields({ ...searchFields })
+    setAppliedSortState({ ...sortState })
+    dismissKeyboard()
   }
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
@@ -212,7 +243,8 @@ function App() {
         <p className="eyebrow">Farwest Iris Gardens</p>
         <h1>Iris Locator</h1>
         <p className="lede">
-          Search by ID, SKU, title, hybridizer, release year, or colors.
+          Search by ID, SKU, title, hybridizer, release year, or colors. Title matches from the start
+          of the name; other text fields match anywhere.
         </p>
       </header>
 
@@ -238,7 +270,9 @@ function App() {
             <div className="filters-panel" id={filtersPanelId}>
               <p className="filters-help">
                 Leave all unchecked to search every field (default). Check one or more to limit the
-                search to only those fields—for example, check Release only to search by year.
+                search to only those fields—for example, check Release only to search by year. Title
+                always matches from the start of the name (case-insensitive); other text fields match
+                anywhere in the value.
               </p>
               <ul className="filters-list">
                 {flowerSearchFieldLabels.map(({ key, label }) => (
@@ -402,9 +436,18 @@ function App() {
             ) : null}
           </div>
 
-          <button className="search-button" type="submit" disabled={isSearching}>
-            {isSearching ? 'Searching…' : 'Find location'}
-          </button>
+          <div className="search-actions">
+            <button className="search-button" type="submit" disabled={isSearching}>
+              {isSearching ? 'Searching…' : 'Find location'}
+            </button>
+            <button
+              type="button"
+              className="clear-search-button"
+              onClick={handleClearSearch}
+            >
+              Clear Search
+            </button>
+          </div>
         </form>
 
         {errorMessage ? <p className="status status-error">{errorMessage}</p> : null}
